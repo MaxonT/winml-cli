@@ -144,6 +144,9 @@ $ winml sys --list-device
 $ winml sys --list-ep --format json
 ```
 
+To check EPs loaded from `WINMLCLI_EP_PATH`, see
+[Custom EP locations](../concepts/eps-and-devices.md#custom-ep-locations).
+
 ## Common pitfalls
 
 - **`--list-device` and `--list-ep` suppress the full report.** When either flag is
