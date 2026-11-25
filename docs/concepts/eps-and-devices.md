@@ -109,67 +109,6 @@ tracks both DLL path and validated EP. Failed identity checks or GenAI library
 loads allow the next candidate to be tried. This preflight does not guarantee
 GenAI model compatibility; that is checked when the model is loaded.
 
-An OpenVINO build works the same way. Directories are scanned for the known
-plugin filenames, for example `onnxruntime_providers_openvino_plugin.dll` for
-OpenVINO and `onnxruntime_providers_qnn.dll` for QNN:
-
-```powershell
-$env:WINMLCLI_EP_PATH = "C:\path\to\openvino\build\Release"
-winml perf -m "C:\path\to\model.onnx" --ep openvino@directory --device npu
-```
-
-### Plain `--ep` versus `--ep <alias>@directory`
-
-- `--ep qnn` selects the QNN provider by precedence. Entries from
-  `WINMLCLI_EP_PATH` are considered before the default sources, but other
-  sources can still be used if those entries fail or do not expose the
-  requested device.
-- `--ep qnn@directory` restricts the request to the `directory` source, which
-  is what `WINMLCLI_EP_PATH` entries produce.
-- The accepted source tags are `bundled`, `pypi`, `nuget`, `msix`,
-  `winml-catalog` and `directory`. An unknown tag, whitespace, or more than one
-  `@` is rejected when the command line is parsed.
-- `winml perf` and `winml compile` accept `--ep <alias>@<source>`. `winml build`
-  and `winml config` parse it but reject it with a usage error ("does not yet
-  support source pinning"); use plain `--ep` there.
-
-### Check which DLL was selected
-
-`winml sys --list-ep` (or `--list-ep --format json`) lists every source that
-contributes each EP. In the text output each row starts with a status tag, then
-the source kind (`FS` for directory entries set through `WINMLCLI_EP_PATH`), and
-a `Path:` line shows the DLL that was found:
-
-```text
-Available execution providers
-  QNNExecutionProvider
-    [primary] FS
-        Path:    C:\path\to\ep\bin\onnxruntime_providers_qnn.dll
-    [shadowed] MSIX      ...
-```
-
-The layout above is taken from the renderer in `src/winml/modelkit/commands/sys.py`
-and is illustrative, not captured from a run. The status tags mean:
-
-- `primary`: registered cleanly and first in precedence for that EP.
-- `shadowed`: registered cleanly but lower in precedence than a `primary` row,
-  so it is not the default pick.
-- `failed`: the DLL could not be registered; an `Error:` line follows.
-- `incompatible`: it registered, but the machine lacks the hardware the EP
-  requires (for example, no Qualcomm device for QNN).
-
-### Troubleshooting custom EP paths
-
-- A path that is neither a directory nor a file, or a file that is not a `.dll`,
-  logs a warning and is skipped. Check the spelling and use `;` between entries.
-- A directory entry only matches the known plugin filenames. If your DLL has a
-  different name, list the file itself and pass `--ep <alias>@directory`.
-- A DLL that cannot be registered (for example, one built for a different
-  architecture than the process or an incompatible ONNX Runtime) is reported as
-  `failed` in `winml sys --list-ep`, with an `Error:` line.
-- If the plugin needs other DLLs, keep them where its distribution expects them;
-  a load failure caused by a missing dependency is reported the same way.
-
 Default discovery only inspects already-ready Windows ML Catalog providers; it
 does not prepare or download non-ready providers. A source-pinned request such
 as `--ep vitisai@directory` does not acquire a Catalog package if the requested
