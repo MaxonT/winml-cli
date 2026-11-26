@@ -447,7 +447,7 @@ def ep_option(
     help_text = (
         "Target execution provider. "
         "Full names: QNNExecutionProvider, OpenVINOExecutionProvider, VitisAIExecutionProvider. "
-        "Aliases: qnn, ov/openvino, vitis/vitisai"
+        "Aliases: qnn, openvino, vitisai"
     )
     if optional_message:
         help_text = f"{help_text}. {optional_message}"

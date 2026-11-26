@@ -39,9 +39,9 @@ Execution providers appear mainly in constants, EP-name strings, and config keys
 | `DML` | `DmlExecutionProvider` | GPU | DirectML. Use `DML` in our code; do not write `DirectML` as the EP name. |
 | `MIGraphX` | `MIGraphXExecutionProvider` | GPU | AMD. Exact casing (mixed case). |
 | `NvTensorRTRTX` | `NvTensorRTRTXExecutionProvider` | GPU | NVIDIA TensorRT-RTX. Exact casing; do not shorten to `TensorRT`. |
-| `OpenVINO` | `OpenVINOExecutionProvider` | CPU / GPU / NPU | Intel. Exact casing. Alias: `ov`. |
+| `OpenVINO` | `OpenVINOExecutionProvider` | CPU / GPU / NPU | Intel. Exact casing. Alias: `openvino`. |
 | `QNN` | `QNNExecutionProvider` | NPU | Qualcomm. All caps. |
-| `VitisAI` | `VitisAIExecutionProvider` | NPU | AMD Ryzen AI. Exact casing. Alias: `vitis`. |
+| `VitisAI` | `VitisAIExecutionProvider` | NPU | AMD Ryzen AI. Exact casing. Alias: `vitisai`. |
 
 ### Other Canonical Identifiers
 

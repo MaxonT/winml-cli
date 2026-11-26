@@ -20,6 +20,7 @@ from winml.modelkit.utils.cli import (
     build_pipeline_extra_kwargs,
     cache_extra_kwargs,
     cache_options,
+    ep_option,
     guard_output,
     ignored_build_flags_warning,
     ignored_cache_flags_warning,
@@ -185,6 +186,29 @@ class TestNoColorOption:
         result = CliRunner().invoke(self._make_cmd(), ["--help"])
         assert "--no-color" in result.output
         assert "NO_COLOR" in result.output
+
+
+class TestEpOption:
+    """Tests for ep_option()."""
+
+    @staticmethod
+    def _make_cmd() -> click.Command:
+        @click.command()
+        @ep_option(required=False)
+        def cmd(ep: str | None) -> None:
+            pass
+
+        return cmd
+
+    def test_help_aliases_are_accepted_choices(self) -> None:
+        """Every alias listed in --help is accepted; dropped aliases are not listed."""
+        cmd = self._make_cmd()
+        flat = " ".join(CliRunner().invoke(cmd, ["--help"]).output.split())
+        assert "Aliases: qnn, openvino, vitisai" in flat
+        for alias in ("qnn", "openvino", "vitisai"):
+            assert CliRunner().invoke(cmd, ["--ep", alias]).exit_code == 0
+        for dropped in ("ov", "vitis"):
+            assert CliRunner().invoke(cmd, ["--ep", dropped]).exit_code == 2
 
 
 class TestPrecisionOption:
