@@ -8,7 +8,7 @@ Single supported usage — call :func:`require_ep` at the top of a test body
 with one EP name. Skips the test when the EP is not available on the host.
 
 The accepted name follows the same convention as the CLI ``--ep`` flag:
-short alias (``"qnn"``, ``"openvino"``, ``"ov"``, ``"dml"``, ...) or the
+short alias (``"qnn"``, ``"openvino"``, ``"dml"``, ...) or the
 full ORT provider name (``"QNNExecutionProvider"``). Resolution is done
 by :func:`winml.modelkit.utils.constants.normalize_ep_name`, so no local
 mapping lives here.

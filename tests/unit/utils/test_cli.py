@@ -188,27 +188,35 @@ class TestNoColorOption:
         assert "NO_COLOR" in result.output
 
 
-class TestEpOption:
-    """Tests for ep_option()."""
+class TestEpOptionAliases:
+    """The --ep help must only advertise aliases that the option accepts."""
 
     @staticmethod
     def _make_cmd() -> click.Command:
         @click.command()
         @ep_option(required=False)
         def cmd(ep: str | None) -> None:
-            pass
+            click.echo(ep)
 
         return cmd
 
-    def test_help_aliases_are_accepted_choices(self) -> None:
-        """Every alias listed in --help is accepted; dropped aliases are not listed."""
+    def test_help_lists_only_accepted_aliases(self) -> None:
+        """Every alias named in the help line is accepted as a --ep value."""
         cmd = self._make_cmd()
-        flat = " ".join(CliRunner().invoke(cmd, ["--help"]).output.split())
-        assert "Aliases: qnn, openvino, vitisai" in flat
-        for alias in ("qnn", "openvino", "vitisai"):
-            assert CliRunner().invoke(cmd, ["--ep", alias]).exit_code == 0
-        for dropped in ("ov", "vitis"):
-            assert CliRunner().invoke(cmd, ["--ep", dropped]).exit_code == 2
+        help_text = next(p.help for p in cmd.params if p.name == "ep")
+        assert help_text is not None
+        aliases = help_text.split("Aliases: ", 1)[1].split(",")
+        for alias in (a.strip().split(".")[0] for a in aliases):
+            for name in alias.split("/"):
+                result = CliRunner().invoke(cmd, ["--ep", name])
+                assert result.exit_code == 0, name
+
+    def test_ov_is_not_an_alias(self) -> None:
+        """'ov' was dropped as an alias, so the help must not mention it."""
+        cmd = self._make_cmd()
+        assert CliRunner().invoke(cmd, ["--ep", "ov"]).exit_code == 2
+        help_text = next(p.help for p in cmd.params if p.name == "ep")
+        assert "ov/" not in (help_text or "")
 
 
 class TestPrecisionOption:
