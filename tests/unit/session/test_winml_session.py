@@ -1803,6 +1803,50 @@ class TestWinMLSessionPrecisionDetection:
             session = WinMLSession(onnx_path=path, ep_device=cpu_ep_device)
         assert session.io_config["precision"] == "w8a16"
 
+    def test_precision_compiled_epcontext_opaque_weights_is_unknown(
+        self, tmp_path: Path, cpu_ep_device: WinMLEPDevice
+    ):
+        """Compiled EPContext model with only uint16 activation Q/DQ → None.
+
+        The compiled outer graph exposes activation-side Q/DQ pairs while the
+        weights are opaque, so the weight width cannot be established. It must
+        not be mirrored from the activation side (w8a16 → 'w16a16').
+        """
+        import numpy as np
+        from onnx import TensorProto, helper
+
+        a = helper.make_tensor_value_info("A", TensorProto.FLOAT, [1, 4])
+        c = helper.make_tensor_value_info("C", TensorProto.FLOAT, [1, 4])
+
+        scale = helper.make_tensor("S", TensorProto.FLOAT, [], [0.05])
+        zp = helper.make_tensor(
+            "Z", TensorProto.UINT16, [], np.array([0], dtype=np.uint16).tobytes(), raw=True
+        )
+        q = helper.make_node("QuantizeLinear", ["A", "S", "Z"], ["A_q"], name="q")
+        ctx = helper.make_node(
+            "EPContext",
+            ["A_q"],
+            ["C_q"],
+            name="ctx",
+            domain="com.microsoft",
+            embed_mode=0,
+            ep_cache_context="ctx.bin",
+            source="QNN",
+        )
+        dq = helper.make_node("DequantizeLinear", ["C_q", "S", "Z"], ["C"], name="dq")
+
+        graph = helper.make_graph([q, ctx, dq], "compiled", [a], [c], [scale, zp])
+        model = helper.make_model(
+            graph,
+            opset_imports=[helper.make_opsetid("", 13), helper.make_opsetid("com.microsoft", 1)],
+        )
+        model.ir_version = 7
+        path = self._save(model, tmp_path / "compiled.onnx")
+
+        with patch("winml.modelkit.session.session.ort.InferenceSession"):
+            session = WinMLSession(onnx_path=path, ep_device=cpu_ep_device)
+        assert session.io_config["precision"] is None
+
     def test_precision_int8_ignores_int32_bias_zp(
         self, tmp_path: Path, cpu_ep_device: WinMLEPDevice
     ):

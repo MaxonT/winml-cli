@@ -1838,6 +1838,13 @@ class WinMLSession:
                 target = weight_counts if is_weight_side else act_counts
                 target[bits] = target.get(bits, 0) + 1
 
+            # A compiled model keeps only its activation-side Q/DQ pairs in
+            # the outer graph; the weights live in opaque EPContext binaries.
+            # Falling back to the activation width would mislabel e.g. a
+            # compiled w8a16 model as w16a16, so report unknown instead.
+            if "EPContext" in op_types and not weight_counts:
+                return None
+
             if weight_counts or act_counts:
                 w = (
                     max(weight_counts, key=lambda k: weight_counts[k])
