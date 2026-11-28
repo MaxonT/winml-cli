@@ -30,7 +30,12 @@ from dataclasses import dataclass
 import onnx
 import pytest
 
-from winml.modelkit.optim.pipes import GRAPH_CAPABILITIES, ORTGraphPipe, ORTGraphPipeConfig
+from winml.modelkit.optim.pipes import (
+    GRAPH_CAPABILITIES,
+    OptimizationError,
+    ORTGraphPipe,
+    ORTGraphPipeConfig,
+)
 
 from ..conftest import verify_capability_effect
 
@@ -489,6 +494,45 @@ class TestORTGraphPipeBasic:
 
         assert len(result.graph.input) == len(sample_model.graph.input)
         assert len(result.graph.output) == len(sample_model.graph.output)
+
+    def test_compiled_nodes_error_suggests_disabling_ort_graph(
+        self, sample_model: onnx.ModelProto, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A compiled-node serialization failure points to the workaround flag."""
+        import onnxruntime as ort
+
+        ort_message = (
+            "Unable to serialize model as it contains compiled nodes. "
+            "Please disable any execution providers which generate compiled nodes."
+        )
+
+        def fail_session(*_args, **_kwargs) -> None:
+            raise RuntimeError(ort_message)
+
+        monkeypatch.setattr(ort, "InferenceSession", fail_session)
+
+        with pytest.raises(OptimizationError) as excinfo:
+            ORTGraphPipe().process(sample_model, ORTGraphPipeConfig(enabled=["gelu_fusion"]))
+
+        assert ort_message in str(excinfo.value)
+        assert "--disable-ort-graph-optimization" in str(excinfo.value)
+
+    def test_other_session_errors_have_no_workaround_hint(
+        self, sample_model: onnx.ModelProto, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Unrelated ORT failures keep their message without the compiled-node hint."""
+        import onnxruntime as ort
+
+        def fail_session(*_args, **_kwargs) -> None:
+            raise RuntimeError("some other failure")
+
+        monkeypatch.setattr(ort, "InferenceSession", fail_session)
+
+        with pytest.raises(OptimizationError) as excinfo:
+            ORTGraphPipe().process(sample_model, ORTGraphPipeConfig(enabled=["gelu_fusion"]))
+
+        assert "some other failure" in str(excinfo.value)
+        assert "--disable-ort-graph-optimization" not in str(excinfo.value)
 
     def test_process_with_all_disabled(self, sample_model: onnx.ModelProto) -> None:
         """Process with all disabled (default) should return model unchanged."""

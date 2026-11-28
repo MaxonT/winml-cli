@@ -673,8 +673,18 @@ class ORTGraphPipe(BasePipe[ORTGraphPipeConfig]):
                 else:
                     session = ort.InferenceSession(str(input_file), sess_opts)
             except Exception as e:
+                message = f"ONNX Runtime optimization failed: {e}"
+                if "contains compiled nodes" in str(e):
+                    # EPs such as QNN and OpenVINO on NPU compile nodes, and ORT
+                    # cannot serialize a graph that contains them.
+                    message += (
+                        " The selected execution provider compiled nodes that ORT cannot "
+                        "write out as an optimized model. Re-run with "
+                        "--disable-ort-graph-optimization, or optimize the model without "
+                        "a compiling execution provider."
+                    )
                 raise OptimizationError(
-                    f"ONNX Runtime optimization failed: {e}",
+                    message,
                     pipe_name=self.name,
                     model_info={
                         "optimization_level": config.optimization_level,
